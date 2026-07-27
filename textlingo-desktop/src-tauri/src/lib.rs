@@ -21,14 +21,31 @@ use ai_service::AIServiceCache;
 use tauri::Manager;
 
 #[cfg(target_os = "linux")]
+fn set_env_if_missing(key: &str, value: &str) {
+    if std::env::var_os(key).is_none() {
+        unsafe { std::env::set_var(key, value) };
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn is_appimage_runtime() -> bool {
+    if std::env::var_os("APPIMAGE").is_some() || std::env::var_os("APPDIR").is_some() {
+        return true;
+    }
+
+    std::env::current_exe()
+        .ok()
+        .and_then(|path| path.to_str().map(str::to_owned))
+        .is_some_and(|path| path.contains("/.mount_"))
+}
+
+#[cfg(target_os = "linux")]
 fn apply_linux_webkit_appimage_workarounds() {
-    if std::env::var_os("APPIMAGE").is_some() {
-        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-            unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
-        }
-        if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
-            unsafe { std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1") };
-        }
+    if is_appimage_runtime() {
+        set_env_if_missing("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        set_env_if_missing("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+        set_env_if_missing("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1");
+        set_env_if_missing("LIBGL_DRI3_DISABLE", "1");
     }
 }
 
