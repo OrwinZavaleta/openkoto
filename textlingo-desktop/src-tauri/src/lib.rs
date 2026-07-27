@@ -20,8 +20,23 @@ use agent_worker::{mark_running_tasks_interrupted_in_dir, AgentWorkerManager};
 use ai_service::AIServiceCache;
 use tauri::Manager;
 
+#[cfg(target_os = "linux")]
+fn apply_linux_webkit_appimage_workarounds() {
+    if std::env::var_os("APPIMAGE").is_some() {
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+            unsafe { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1") };
+        }
+        if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+            unsafe { std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1") };
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    apply_linux_webkit_appimage_workarounds();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
